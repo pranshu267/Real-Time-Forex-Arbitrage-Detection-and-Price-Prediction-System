@@ -1,1 +1,4 @@
 .DS_Store
+frontend_files/node_modules
+frontend_files/package-lock.json
+frontendd_files/package.json
