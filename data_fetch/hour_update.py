@@ -1,18 +1,19 @@
 from polygon import RESTClient
 from google.cloud import bigquery
 from datetime import datetime
+import datetime as dt
 import pytz
 
 POLYGON_API_KEY = "beBybSi8daPgsTp5yx5cHtHpYcrjp5Jq"
 client = RESTClient(api_key=POLYGON_API_KEY)
 
-service_account_path = 'creds.json'
+service_account_path = '../creds.json'
 bq_client = bigquery.Client.from_service_account_json(service_account_path)
 
 project_id = 'bigdata-421623'
 dataset = 'ForEx_Big_Data'
 project = 'BigData'
-table = 'Hourly_Forex'
+table = 'Minute_Forex'
 table_ref = bq_client.dataset(dataset).table(table)
 
 tickers = ['C:EURUSD', 'C:USDJPY', 'C:GBPUSD', 'C:JPYEUR', 'C:USDEUR',
@@ -40,10 +41,22 @@ def format_row(agg_obj, ticker):
 
 
 def get_data_from_polygon(ticker):
+    # Current time and 15 minutes ago
+    now = datetime.now()
+    fifteen_minutes_ago = now - dt.timedelta(hours=1)
+
+    # Today's date formatted for API call
+    today_date = now.strftime("%Y-%m-%d")
+
+    # Fetch today's data
     aggs = []
-    for a in client.list_aggs(ticker=ticker, multiplier=1, timespan="hour", from_="2023-03-01", to="2024-04-27", limit=10000):
+    for a in client.list_aggs(ticker=ticker, multiplier=1, timespan="hour", from_=today_date, to=today_date, limit=5000):
         aggs.append(a)
-    return aggs
+
+    # Filter to keep only last 5 minutes data
+    filtered_aggs = [agg for agg in aggs if datetime.fromtimestamp(agg.timestamp / 1000) >= fifteen_minutes_ago]
+
+    return filtered_aggs
 
 
 def get_data_from_bq(query):
