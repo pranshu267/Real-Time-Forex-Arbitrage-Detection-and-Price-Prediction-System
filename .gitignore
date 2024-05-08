@@ -2,3 +2,5 @@
 frontend_files/node_modules
 frontend_files/package-lock.json
 frontendd_files/package.json
+.vscode
+_pycache__/
