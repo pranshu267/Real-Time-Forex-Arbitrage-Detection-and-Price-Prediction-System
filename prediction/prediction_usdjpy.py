@@ -3,6 +3,7 @@ import torch
 from datetime import datetime
 from lstm import BidirectionalLSTM
 import numpy as np
+from prefect import flow, task, get_run_logger
 
 model = BidirectionalLSTM(input_dim=6, hidden_dim=50, num_layers=2, output_dim=3, dropout_rate=0.2)
 model.load_state_dict(torch.load('trained_models/usdjpy_model_state_dict.pth'))
@@ -27,6 +28,10 @@ std_dev_price = 6.26838
 std_dev_volume = 3784.9482
 std_dev_avg_volume = 6.41078
 
+@task(
+    description="format rows",
+    log_prints=True
+)
 def get_latest_data(ticker):
     query = f"""
     SELECT closing_price, highest_price, lowest_price, opening_price, volume, avg_volume_weight
@@ -39,6 +44,11 @@ def get_latest_data(ticker):
     for row in query_job:
         return dict(row)
 
+
+@task(
+    description="format rows",
+    log_prints=True
+)
 def write_prediction_to_bigquery(ticker, prediction):
     
     scaled_prediction = (prediction*std_dev_price) + mean_price
@@ -52,20 +62,29 @@ def write_prediction_to_bigquery(ticker, prediction):
     else:
         print("Encountered errors while inserting rows: {}".format(errors))
 
-latest_data = get_latest_data(ticker)
 
-scaled_closing_price = (latest_data['closing_price']*std_dev_price) + mean_price
-scaled_highest_price = (latest_data['highest_price']*std_dev_price) + mean_price
-scaled_lowest_price = (latest_data['lowest_price']*std_dev_price) + mean_price
-scaled_opening_price = (latest_data['opening_price']*std_dev_price) + mean_price
-scaled_volume_price = (latest_data['volume']*std_dev_volume) + mean_volume
-scaled_avg_volume_weight_price = (latest_data['avg_volume_weight']*std_dev_avg_volume) + mean_avg_volume
+@flow(
+    description="main flow"
+)
+def prediction_main_3():
+    latest_data = get_latest_data(ticker)
 
-features = np.array([[scaled_closing_price, scaled_highest_price, scaled_lowest_price, scaled_opening_price, scaled_volume_price, scaled_avg_volume_weight_price]])
-features = features.reshape(1, 1, 6)
-data_tensor = torch.tensor(features, dtype=torch.float32)  
+    scaled_closing_price = (latest_data['closing_price']*std_dev_price) + mean_price
+    scaled_highest_price = (latest_data['highest_price']*std_dev_price) + mean_price
+    scaled_lowest_price = (latest_data['lowest_price']*std_dev_price) + mean_price
+    scaled_opening_price = (latest_data['opening_price']*std_dev_price) + mean_price
+    scaled_volume_price = (latest_data['volume']*std_dev_volume) + mean_volume
+    scaled_avg_volume_weight_price = (latest_data['avg_volume_weight']*std_dev_avg_volume) + mean_avg_volume
 
-with torch.no_grad():
-    prediction = model(data_tensor)
+    features = np.array([[scaled_closing_price, scaled_highest_price, scaled_lowest_price, scaled_opening_price, scaled_volume_price, scaled_avg_volume_weight_price]])
+    features = features.reshape(1, 1, 6)
+    data_tensor = torch.tensor(features, dtype=torch.float32)
 
-write_prediction_to_bigquery(ticker, prediction)
+    with torch.no_grad():
+        prediction = model(data_tensor)
+
+    write_prediction_to_bigquery(ticker, prediction)
+
+
+if __name__ == "__main__":
+    prediction_main_3()

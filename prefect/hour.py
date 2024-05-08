@@ -3,25 +3,27 @@ from google.cloud import bigquery
 from datetime import datetime
 import datetime as dt
 import pytz
+import pandas as pd
+from prefect import flow, task, get_run_logger
 
 POLYGON_API_KEY = "beBybSi8daPgsTp5yx5cHtHpYcrjp5Jq"
-client = RESTClient(api_key=POLYGON_API_KEY)
 
-service_account_path = '../creds.json'
-bq_client = bigquery.Client.from_service_account_json(service_account_path)
 
 project_id = 'bigdata-421623'
 dataset = 'ForEx_Big_Data'
 project = 'BigData'
-table = 'Minute_Forex'
-table_ref = bq_client.dataset(dataset).table(table)
+table = 'Hourly_Forex_copy'
 
 tickers = ['C:EURUSD', 'C:USDJPY', 'C:GBPUSD', 'C:JPYEUR', 'C:USDEUR',
            'C:JPYUSD', 'C:USDGBP', 'C:EURJPY', 'C:JPYGBP', 'C:GBPJPY',
            'C:GBPEUR', 'C:EURGBP']
 
 
-def format_row(agg_obj, ticker):
+@task(
+    description="format rows",
+    log_prints=True
+)
+def hour_format_row(agg_obj, ticker):
 
     time_value = datetime.fromtimestamp(agg_obj.timestamp / 1000, tz=pytz.UTC).isoformat()
     created_at_value = datetime.utcnow().isoformat()
@@ -39,8 +41,12 @@ def format_row(agg_obj, ticker):
         'ticker': ticker  # You may need to adjust this based on your actual data
     }
 
-
-def get_data_from_polygon(ticker):
+@task(
+    description="fetch the data from api",
+    log_prints=True
+)
+def hour_get_data_from_polygon(ticker):
+    client = RESTClient(api_key=POLYGON_API_KEY)
     # Current time and 15 minutes ago
     now = datetime.now()
     fifteen_minutes_ago = now - dt.timedelta(hours=1)
@@ -58,26 +64,41 @@ def get_data_from_polygon(ticker):
 
     return filtered_aggs
 
+# def get_data_from_bq(query):
+#     query = f"SELECT * FROM `{dataset}.{table}`"
+#     query_job = client.query(query)
+#     print(query_job)
+#
+#     # Print the results
+#     for row in query_job:
+#         print(dict(row))
 
-def get_data_from_bq(query):
-    query = f"SELECT * FROM `{dataset}.{table}`"
-    query_job = client.query(query)
-    print(query_job)
+@task(
+    description="insert data in bq",
+    log_prints=True
+)
+def hour_insert_data_in_bq(rows_to_insert):
 
-    # Print the results
-    for row in query_job:
-        print(dict(row))
+    service_account_path = 'creds.json'
+    bq_client = bigquery.Client.from_service_account_json(service_account_path)
+    table_ref = bq_client.dataset(dataset).table(table)
 
-
-def insert_data_in_bq(rows_to_insert, table_ref):
     errors = bq_client.insert_rows_json(table_ref, rows_to_insert)
     if errors:
         print('Errors occurred while inserting rows:', errors)
     else:
         print('Rows have been successfully inserted.')
 
-for t in tickers:
-    data = get_data_from_polygon(ticker=t)
-    rows = [format_row(agg, ticker=t) for agg in data]
-    insert_data_in_bq(rows, table_ref)
 
+@flow(
+    description="main flow"
+)
+def main_hour():
+    for t in tickers:
+        data = hour_get_data_from_polygon(ticker=t)
+        rows = [hour_format_row(agg, ticker=t) for agg in data]
+        hour_insert_data_in_bq(rows)
+
+
+if __name__ == "__main__":
+    main_hour()
