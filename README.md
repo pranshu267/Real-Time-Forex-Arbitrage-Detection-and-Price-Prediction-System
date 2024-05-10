@@ -25,14 +25,14 @@ This system provides a significant advantage to forex traders by automating the 
 
 ## System Architecture
 
-![Figure 1](assets/Screenshot 2024-05-10 at 1.22.49 AM.png)
+![Diagram Explaing the Components and System Architecture of the Project](assets/figure1.png)
 
 ## Real Time Dashboard Created on Looker Studio 
 
-![Figure 2](assets/Screenshot 2024-05-10 at 1.23.30 AM.png)
+![Real-Time Dashboard on Looker Studion ](assets/figure2.png)
 
-![Figure 3](assets/Screenshot 2024-05-10 at 1.23.44 AM.png)
+![Closing price updated by minute](assets/figure3.png)
 
-![Figure 4](assets/Screenshot 2024-05-10 at 1.24.11 AM.png)
+![Top 3 Arbitrage opportunities updated by minute (Ticker1->Ticker2->Ticker3->Ticker4)](assets/figure4.png)
 
-![Figure 5](assets/Screenshot 2024-05-10 at 1.24.51 AM.png)
+![Daily CLosing Price over the Selected Date Range](assets/figure5.png)
