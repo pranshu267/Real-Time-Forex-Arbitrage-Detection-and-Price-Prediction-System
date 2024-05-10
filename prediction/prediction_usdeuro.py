@@ -16,7 +16,7 @@ project_id = 'bigdata-421623'
 dataset = 'ForEx_Big_Data'
 project = 'BigData'
 table = 'Hourly_Forex_copy'
-table_write = 'hourly_prediction'
+table_write = 'pred'
 table_ref = client.dataset(dataset).table(table_write)
 
 ticker = "C:USDEUR" 
@@ -53,7 +53,7 @@ def write_prediction_to_bigquery(ticker, prediction):
     
     scaled_prediction = (prediction*std_dev_price) + mean_price
     rows_to_insert = [
-        {"ticker": ticker, "prediction_price_t+1": str(scaled_prediction.numpy()[0][0]), "prediction_price_t+2": str(scaled_prediction.numpy()[0][1]), "prediction_price_t+3": str(scaled_prediction.numpy()[0][2]), "prediction_time": datetime.utcnow().isoformat()}
+        {"ticker": ticker, "price_1": scaled_prediction[0][0].item(), "price_2": scaled_prediction[0][1].item(), "price_3": scaled_prediction[0][2].item(), "prediction_time": datetime.utcnow().isoformat()}
     ]
     print(rows_to_insert)
     errors = client.insert_rows_json(table_ref, rows_to_insert)  
