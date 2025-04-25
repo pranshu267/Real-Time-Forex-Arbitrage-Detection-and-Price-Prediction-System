@@ -3,7 +3,7 @@ from google.cloud import bigquery
 from datetime import datetime
 import pytz
 
-POLYGON_API_KEY = "beBybSi8daPgsTp5yx5cHtHpYcrjp5Jq"
+POLYGON_API_KEY = ""
 client = RESTClient(api_key=POLYGON_API_KEY)
 
 service_account_path = '../creds.json'
