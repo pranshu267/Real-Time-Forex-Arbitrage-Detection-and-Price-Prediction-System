@@ -8,7 +8,7 @@ from prefect import flow, task, get_run_logger
 from typing import List
 import numpy as np
 
-POLYGON_API_KEY = "beBybSi8daPgsTp5yx5cHtHpYcrjp5Jq"
+POLYGON_API_KEY = ""
 
 
 project_id = 'bigdata-421623'
